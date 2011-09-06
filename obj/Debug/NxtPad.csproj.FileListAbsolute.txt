@@ -1,0 +1,8 @@
+C:\Users\Anton\Documents\Visual Studio 2008\Projects\NXTPad\NxtPad\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\Anton\Documents\Visual Studio 2008\Projects\NXTPad\NxtPad\obj\Debug\NxtPad.Form1.resources
+C:\Users\Anton\Documents\Visual Studio 2008\Projects\NXTPad\NxtPad\obj\Debug\NxtPad.Properties.Resources.resources
+C:\Users\Anton\Documents\Visual Studio 2008\Projects\NXTPad\NxtPad\obj\Debug\NxtPad.csproj.GenerateResource.Cache
+C:\Users\Anton\Documents\Visual Studio 2008\Projects\NXTPad\NxtPad\bin\Debug\NxtPad.exe
+C:\Users\Anton\Documents\Visual Studio 2008\Projects\NXTPad\NxtPad\bin\Debug\NxtPad.pdb
+C:\Users\Anton\Documents\Visual Studio 2008\Projects\NXTPad\NxtPad\obj\Debug\NxtPad.exe
+C:\Users\Anton\Documents\Visual Studio 2008\Projects\NXTPad\NxtPad\obj\Debug\NxtPad.pdb
