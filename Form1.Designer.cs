@@ -53,10 +53,20 @@
             this.button2 = new System.Windows.Forms.Button();
             this.comboBoxComports = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
+            this.tabPage3 = new System.Windows.Forms.TabPage();
+            this.label3 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
+            this.ConnectBtn = new System.Windows.Forms.Button();
+            this.DelBtn = new System.Windows.Forms.Button();
+            this.SavePort = new System.Windows.Forms.ComboBox();
+            this.SaveName = new System.Windows.Forms.TextBox();
+            this.SaveBtn = new System.Windows.Forms.Button();
+            this.SaveList = new System.Windows.Forms.ListBox();
             this.btMsgTimer = new System.Windows.Forms.Timer();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
+            this.tabPage3.SuspendLayout();
             this.SuspendLayout();
             // 
             // mainMenu1
@@ -90,11 +100,12 @@
             // 
             this.tabControl1.Controls.Add(this.tabPage1);
             this.tabControl1.Controls.Add(this.tabPage2);
+            this.tabControl1.Controls.Add(this.tabPage3);
             this.tabControl1.Location = new System.Drawing.Point(0, 0);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
             this.tabControl1.Size = new System.Drawing.Size(240, 268);
-            this.tabControl1.TabIndex = 1;
+            this.tabControl1.TabIndex = 3;
             // 
             // tabPage1
             // 
@@ -196,7 +207,7 @@
             this.tabPage2.Controls.Add(this.label1);
             this.tabPage2.Location = new System.Drawing.Point(0, 0);
             this.tabPage2.Name = "tabPage2";
-            this.tabPage2.Size = new System.Drawing.Size(232, 242);
+            this.tabPage2.Size = new System.Drawing.Size(240, 245);
             this.tabPage2.Text = "settings";
             // 
             // CB_Toggling
@@ -257,6 +268,92 @@
             this.label1.Size = new System.Drawing.Size(100, 20);
             this.label1.Text = "BT Com port";
             // 
+            // tabPage3
+            // 
+            this.tabPage3.Controls.Add(this.label3);
+            this.tabPage3.Controls.Add(this.label2);
+            this.tabPage3.Controls.Add(this.ConnectBtn);
+            this.tabPage3.Controls.Add(this.DelBtn);
+            this.tabPage3.Controls.Add(this.SavePort);
+            this.tabPage3.Controls.Add(this.SaveName);
+            this.tabPage3.Controls.Add(this.SaveBtn);
+            this.tabPage3.Controls.Add(this.SaveList);
+            this.tabPage3.Location = new System.Drawing.Point(0, 0);
+            this.tabPage3.Name = "tabPage3";
+            this.tabPage3.Size = new System.Drawing.Size(232, 242);
+            this.tabPage3.Text = "NXTs";
+            // 
+            // label3
+            // 
+            this.label3.Location = new System.Drawing.Point(140, 126);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(93, 20);
+            this.label3.Text = "Com port";
+            // 
+            // label2
+            // 
+            this.label2.Location = new System.Drawing.Point(7, 126);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(127, 20);
+            this.label2.Text = "Save as...";
+            // 
+            // ConnectBtn
+            // 
+            this.ConnectBtn.Location = new System.Drawing.Point(7, 218);
+            this.ConnectBtn.Name = "ConnectBtn";
+            this.ConnectBtn.Size = new System.Drawing.Size(226, 24);
+            this.ConnectBtn.TabIndex = 5;
+            this.ConnectBtn.Text = "Connect";
+            this.ConnectBtn.Click += new System.EventHandler(this.openBtnClick);
+            // 
+            // DelBtn
+            // 
+            this.DelBtn.Location = new System.Drawing.Point(140, 186);
+            this.DelBtn.Name = "DelBtn";
+            this.DelBtn.Size = new System.Drawing.Size(93, 26);
+            this.DelBtn.TabIndex = 4;
+            this.DelBtn.Text = "Delete";
+            this.DelBtn.Click += new System.EventHandler(this.button4_Click);
+            // 
+            // SavePort
+            // 
+            this.SavePort.DisplayMember = "2";
+            this.SavePort.Items.Add("COM0");
+            this.SavePort.Items.Add("COM1");
+            this.SavePort.Items.Add("COM2");
+            this.SavePort.Items.Add("COM3");
+            this.SavePort.Items.Add("COM4");
+            this.SavePort.Items.Add("COM5");
+            this.SavePort.Items.Add("COM6");
+            this.SavePort.Location = new System.Drawing.Point(140, 149);
+            this.SavePort.Name = "SavePort";
+            this.SavePort.Size = new System.Drawing.Size(93, 22);
+            this.SavePort.TabIndex = 3;
+            // 
+            // SaveName
+            // 
+            this.SaveName.Location = new System.Drawing.Point(7, 149);
+            this.SaveName.Name = "SaveName";
+            this.SaveName.Size = new System.Drawing.Size(127, 21);
+            this.SaveName.TabIndex = 2;
+            // 
+            // SaveBtn
+            // 
+            this.SaveBtn.Location = new System.Drawing.Point(7, 186);
+            this.SaveBtn.Name = "SaveBtn";
+            this.SaveBtn.Size = new System.Drawing.Size(127, 26);
+            this.SaveBtn.TabIndex = 1;
+            this.SaveBtn.Text = "Save";
+            this.SaveBtn.Click += new System.EventHandler(this.button3_Click);
+            // 
+            // SaveList
+            // 
+            this.SaveList.Location = new System.Drawing.Point(7, 16);
+            this.SaveList.Name = "SaveList";
+            this.SaveList.Size = new System.Drawing.Size(226, 100);
+            this.SaveList.TabIndex = 0;
+            this.SaveList.SelectedIndexChanged += new System.EventHandler(this.SaveList_SelectedIndexChanged);
+            // 
             // btMsgTimer
             // 
             this.btMsgTimer.Enabled = true;
@@ -277,6 +374,7 @@
             this.tabControl1.ResumeLayout(false);
             this.tabPage1.ResumeLayout(false);
             this.tabPage2.ResumeLayout(false);
+            this.tabPage3.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -305,6 +403,15 @@
         private System.Windows.Forms.Timer btMsgTimer;
         private System.Windows.Forms.CheckBox checkBox1;
         private System.Windows.Forms.CheckBox CB_Toggling;
+        private System.Windows.Forms.TabPage tabPage3;
+        private System.Windows.Forms.ComboBox SavePort;
+        private System.Windows.Forms.TextBox SaveName;
+        private System.Windows.Forms.Button SaveBtn;
+        private System.Windows.Forms.ListBox SaveList;
+        private System.Windows.Forms.Button DelBtn;
+        private System.Windows.Forms.Button ConnectBtn;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Label label3;
 
     }
 }

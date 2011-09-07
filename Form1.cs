@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Text;
+using Microsoft.Win32;
 using System.Windows.Forms;
 
 namespace NxtPad
@@ -21,13 +22,38 @@ namespace NxtPad
         private bool actionButtonPressed = false;
         private char[] action = {'0','0','0','0'}; //legacy array for storing which action button was pressed
         //private bool dialogvisible  = false;
-       
+        //2 Keys, one to Store the DEVices and their matching Com port, one to store general settings
+        RegistryKey DevKey = Registry.CurrentUser.CreateSubKey("SOFTWARE\\NXTPad\\Devices");
+        RegistryKey SettingsKey = Registry.CurrentUser.CreateSubKey("SOFTWARE\\NXTPad");
+        private void LoadDevices()
+        {
+           //Clears the Displayed list and rebuild it using the Registry
+            SaveList.Items.Clear();
+            foreach (string i in DevKey.GetValueNames())
+            {
+                SaveList.Items.Add(i);
+            }
 
+        }
         private void Setup(object sender, EventArgs e)
         {
+            LoadDevices();
             comboBoxComports.SelectedIndex = 1; //my default setting: COM1
             serialPort1.Close();//just to   be sure.
             serialPort1.PortName = "COM1";//my default
+            
+            //if LastNXT is saved, load it and goto save page
+          string NXTName=(string) SettingsKey.GetValue("LastNXT","");
+          if (NXTName != "")
+            {
+             
+               DoLoad((string)NXTName);
+               tabControl1.SelectedIndex = 2;
+            }
+
+            
+            
+
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -48,6 +74,8 @@ namespace NxtPad
         {
             serialPort1.Close();
             Application.Exit();
+         
+
 
         }
 
@@ -118,7 +146,9 @@ namespace NxtPad
             //DialogResult rslt = MessageBox.Show(NXTString);
            
             byte[] Command = new byte[NXTString.Length + 7];
-            byte[] CommandHeader = {(byte)(NXTString.Length + 5),0x00, 0x00, 0x09, 0x00, (byte)(NXTString.Length + 1) }; //NoReply, SendMSG, MsgBox 1, MSG length.
+            byte[] CommandHeader = {(byte)(NXTString.Length + 5),0x00, 0x80, 0x09, 0x00, (byte)(NXTString.Length + 1) }; //
+            //orignial byte[] CommandHeader = { (byte)(NXTString.Length + 5), 0x00, 0x00, 0x09, 0x00, (byte)(NXTString.Length + 1) }; //
+//            //Lenght LSB,Lenght MSB, NoReply, SendMSG, MsgBox 1, MSG length.
                         
             
             int j = 6; //start writing the string to the byte array on the 7th byte
@@ -175,7 +205,8 @@ namespace NxtPad
         private void openBtnClick(object sender, EventArgs e)
         {
             serialPort1.Close();
-            serialPort1.PortName = comboBoxComports.SelectedItem.ToString();
+            //serialPort1.PortName = comboBoxComports.SelectedItem.ToString();
+            serialPort1.PortName = comboBoxComports.Text.ToString();
             try
             {
                 serialPort1.Open();
@@ -318,7 +349,35 @@ namespace NxtPad
             actionButtonPressed = true;
         }
 
-            
+       
+        private void button3_Click(object sender, EventArgs e)
+        {
+           DevKey.SetValue(SaveName.Text, SavePort.SelectedItem.ToString());
+           LoadDevices();
+
+
+        }
+        private void DoLoad(string NXTName)
+        {
+            // Loads the Port for NXTName from the Registry and sets the ComboboxPorts Name to Point to it
+            SavePort.Text = (string)DevKey.GetValue(NXTName);
+            SaveName.Text = NXTName;
+            comboBoxComports.Text = SavePort.Text;
+            //Save the last used NXT
+            SettingsKey.SetValue("LastNXT", NXTName);  
+        
+        }
+        private void SaveList_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            DoLoad((string)SaveList.SelectedItem);
+        
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            DevKey.DeleteValue((string) SaveList.SelectedItem);
+            LoadDevices();
+        }
 
        
     }
