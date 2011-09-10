@@ -6,11 +6,3 @@ C:\Users\Anton\Documents\Visual Studio 2008\Projects\NXTPad\NxtPad\bin\Debug\Nxt
 C:\Users\Anton\Documents\Visual Studio 2008\Projects\NXTPad\NxtPad\bin\Debug\NxtPad.pdb
 C:\Users\Anton\Documents\Visual Studio 2008\Projects\NXTPad\NxtPad\obj\Debug\NxtPad.exe
 C:\Users\Anton\Documents\Visual Studio 2008\Projects\NXTPad\NxtPad\obj\Debug\NxtPad.pdb
-D:\Sortierte Daten\NXTPAD\bin\Debug\NxtPad.exe
-D:\Sortierte Daten\NXTPAD\bin\Debug\NxtPad.pdb
-D:\Sortierte Daten\NXTPAD\obj\Debug\ResolveAssemblyReference.cache
-D:\Sortierte Daten\NXTPAD\obj\Debug\NxtPad.Form1.resources
-D:\Sortierte Daten\NXTPAD\obj\Debug\NxtPad.Properties.Resources.resources
-D:\Sortierte Daten\NXTPAD\obj\Debug\NxtPad.csproj.GenerateResource.Cache
-D:\Sortierte Daten\NXTPAD\obj\Debug\NxtPad.exe
-D:\Sortierte Daten\NXTPAD\obj\Debug\NxtPad.pdb
