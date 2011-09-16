@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Linq;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -8,6 +9,8 @@ using System.Text;
 using System.IO;
 using Microsoft.Win32;
 using System.Windows.Forms;
+using Microsoft.WindowsMobile.Forms;
+
 
 using System.Runtime.InteropServices;
 
@@ -38,6 +41,7 @@ namespace NxtPad
         private int newx=0, newy=0, oldx = 0, oldy = 0, actionInt = 0;
         private bool actionButtonPressed = false;
         private char[] action = {'0','0','0','0'}; //legacy array for storing which action button was pressed
+
         //private bool dialogvisible  = false;
         //for saving
         //2 Keys, one to Store the DEVices and their matching Com port, one to store general settings
@@ -64,20 +68,26 @@ namespace NxtPad
           string NXTName=(string) SettingsKey.GetValue("LastNXT","");
           if (NXTName != "")
             {
-             
-               DoLoad((string)NXTName);
-               tabControl1.SelectedIndex = 2;
+
+                DoLoad((string)NXTName);
             }
 
           foreach (Control C in AryBtnPage.Controls)
               if (C is PictureBox)
                   if (C.Name!="bgr")
                   ((PictureBox)C).Image = imageList1.Images[0];
+          for (int i = 0; i < ABNames.Count(); i++)
+          {
+              ABNames[i] = "";
+          }
+
+              
 
           pBAction1.Image = imageList1.Images[0];
           pBAction2.Image = imageList1.Images[0];
           pBAction3.Image = imageList1.Images[0];
           pBAction4.Image = imageList1.Images[0];
+          DoLoadPages();
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -150,20 +160,55 @@ namespace NxtPad
         private void sendToNxt(int outX, int outY)
         {
             //cap outX and outY
-            if (outX>100) {outX = 100;}
-            if (outX<-100) { outX = -100; }
-            if (outY>100) { outY = 100; }
-            if (outY<-100) { outY = -100; }
+            if (outX>100) {
+                outX = 100;}
+            if (outX<-100) {
+                outX = -100; }
+            if (outY>100) { 
+                outY = 100; }
+            if (outY<-100) { 
+                outY = -100; }
 
 
             //calculate values for direct use in NXT-G Motor blocks
+            /*The idea is this:
+            atan2(y,x) gives me the angle between the positive x axis and a line to (x,y). (x and y axis should be pointing up and right)
+            so a full left steer, say (y=0,x=-100) should give an angle of Pi radians.
+            straight ahead (y=100,x=0) should give Pi/2 radians
+            left (y=0,x=100) gives 0 radians etc...
+            
+
+            In my code, I switched x and y. The mixup gives the formula a neat 90 degrees twist, zeroing around the forward axis.
+
+
+            Therefore:
+            left steer = -Pi/2
+            forward = 0
+            right = Pi/2
+
+
+            Now to map this range to (-100,100) I divide it by Pi and multiply it by 200.
+            */
+
+
             int steer = (int) Math.Round(Math.Atan2(outX, outY) * 200 / Math.PI);
             int pwr = (int) Math.Round(Math.Sqrt(Math.Pow(outX, 2) + Math.Pow(outY, 2)));
+
+            //Fix to limit value to -100/+100
+            if (pwr > 100)
+                pwr = 100;
+            if (pwr < -100)
+                pwr = -100;
+
             int direction = 0;
             if (outY >= 0) { direction = 1; }
 
-            if (steer > 100) { steer = map(steer, 100, 200, 100, 0); }
-            if (steer < -100) { steer = map(steer, -100, -200, -100, 0); }
+            if (steer > 100) {
+                steer = map(steer, 100, 200, 100, 0); 
+            }
+            if (steer < -100) {
+                steer = map(steer, -100, -200, -100, 0); 
+            }
             
             int BTv1=0;
             for (int i=0; i<((int)Buttons.Count() / 2);i++)
@@ -186,11 +231,8 @@ namespace NxtPad
             //DialogResult rslt = MessageBox.Show(NXTString);
            
             byte[] Command = new byte[NXTString.Length + 4];//7
-            //byte[] CommandHeader = {(byte)(NXTString.Length + 5),0x00, 0x80, 0x09, 0x00, (byte)(NXTString.Length + 1) }; //
             byte[] CommandHeader = { 0x80, 0x09, 0x00, (byte)(NXTString.Length + 1) }; //
-            //orignial byte[] CommandHeader = { (byte)(NXTString.Length + 5), 0x00, 0x00, 0x09, 0x00, (byte)(NXTString.Length + 1) }; //
-//            //Lenght LSB,Lenght MSB, NoReply, SendMSG, MsgBox 1, MSG length.
-                        
+               
             
             int j = 4;//6 //start writing the string to the byte array on the 7th byte
             foreach (char ch in NXTString.ToCharArray())
@@ -219,8 +261,19 @@ namespace NxtPad
 
             if (serialPort1.IsOpen)
             {
-                pBled.Visible = true;
-                serialPort1.Write(All, 0, All.Length);
+              //  pBled.Visible = true;
+                //Need Invoke
+
+                try
+                {
+                    serialPort1.Write(All, 0, All.Length);
+                }
+                catch
+                {
+                    MessageBox.Show("Error while sending");
+                    serialPort1.Close();
+                }
+
             }
             else
             {
@@ -342,9 +395,11 @@ namespace NxtPad
        
         private void button3_Click(object sender, EventArgs e)
         {
-
+            //Save
+            //First saving crashes app (maybe first loading)
             DevKey.CreateSubKey(SaveName.Text).SetValue("Port", SavePort.SelectedItem.ToString());
             //Port
+            
             for (int i = 0; i < ABNames.Count(); i++)
             {
                 DevKey.CreateSubKey(SaveName.Text).SetValue("BTNName"+i,ABNames[i]); 
@@ -385,6 +440,54 @@ namespace NxtPad
             SettingsKey.SetValue("LastNXT", NXTName);  
         
         }
+        
+       void getinfo(string regname, MenuItem Item, TabPage page, RegistryKey TabKey)
+    {
+           bool showit= (int) TabKey.GetValue(regname, 1)==1;
+           Item.Checked = showit;
+           SwitchTabPage(page, showit);
+
+
+    }
+       void setinfo(string regname, MenuItem Item, RegistryKey TabKey)
+       {
+           bool showit = Item.Checked;
+           if (showit)
+               TabKey.SetValue(regname, 1);
+           else
+               TabKey.SetValue(regname, 0);
+
+
+       }
+        private void DoLoadPages()
+     
+        {
+            RegistryKey TabKey = SettingsKey.CreateSubKey("Pages");
+
+            getinfo("control",showcontrol,ControlPage,TabKey);
+            getinfo("settings", showsettings, SettingsPage, TabKey);
+            getinfo("NXTs", shownxts, NXTsPage, TabKey);
+            getinfo("files", showfiles, FilesPage, TabKey);
+            getinfo("buttons", showbuttons, AryBtnPage, TabKey);
+            getinfo("debug", showdebug, DebugPage, TabKey);
+
+            
+
+        }
+        private void DoSavePages()
+        {
+            RegistryKey TabKey = SettingsKey.CreateSubKey("Pages");
+
+            setinfo("control", showcontrol, TabKey);
+            setinfo("settings", showsettings, TabKey);
+            setinfo("NXTs", shownxts,  TabKey);
+            setinfo("files", showfiles,  TabKey);
+            setinfo("buttons", showbuttons,  TabKey);
+            setinfo("debug", showdebug,  TabKey);
+
+
+
+        }
         private void SaveList_SelectedIndexChanged(object sender, EventArgs e)
         {
             DoLoad((string)SaveList.SelectedItem);
@@ -393,7 +496,7 @@ namespace NxtPad
 
         private void button4_Click(object sender, EventArgs e)
         {
-            DevKey.DeleteValue((string) SaveList.SelectedItem);
+            DevKey.DeleteSubKeyTree((string) SaveList.SelectedItem);
             LoadDevices();
         }
 
@@ -500,29 +603,274 @@ namespace NxtPad
             ABNames[Convert.ToInt32(((TextBox)sender).Tag)] = ((TextBox)sender).Text;
         }
 
-        private void pictureBox22_Click(object sender, EventArgs e)
+
+
+        private void button3_Click_1(object sender, EventArgs e)
         {
+            GetBatteryLevel();
 
         }
 
-        private void pictureBox2_Click(object sender, EventArgs e)
-        {
-           
-        }
 
-        private void StartPrgrBtn_Click(object sender, EventArgs e)
+        public delegate void MethodInvoker();
+        private delegate void InvokeStr(string text);
+        private delegate void InvokeInt(int i);
+
+
+        private void serialPort1_DataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
         {
-/*            int j = 0;
-            foreach (char ch in NXTString.ToCharArray())
-            {
-                Command[j] = (byte)ch;
-                j++;
+            byte[] Data = new byte[serialPort1.ReadBufferSize];
+
+            serialPort1.Read(Data, 0, serialPort1.ReadBufferSize);
+
+            if ((Data[2] == 02) && (Data[3] == 0x0B))//GETBATTERYLEVEL Answer
+            {//80 23
+           //     textBox7.Invoke(new InvokeInt(NewBatteryData), Data[5] + Data[6]*256);
             }
-            byte[] Command = { 0x80, 0x09, 0x00, (byte)(NXTString.Length + 1) };
-            Send(Commmand);*/
+            if ((Data[2] == 02) && (Data[3] == 0x86))//Find First
+            {
+                byte ErrorCode = Data[4];
+                byte Handle = Data[5];
+                string Filename;
+                Filename = "";
+                for (int j = 0; j < 18; j++)
+                {
+                    Filename = Filename + (char)Data[6 + j];
+                }
+                if (ErrorCode == 0)
+                {
+                    DebugTextBox.Invoke(new InvokeStr(AddFileToList), Filename);
+                    FindNext(Handle);
+                }
+                
+
+            }
+            if ((Data[2] == 02) && (Data[3] == 0x87))//Find Next
+            {
+                byte ErrorCode = Data[4];
+                byte Handle = Data[5];
+                string Filename;
+                Filename = "";
+                for (int j = 0; j < 18; j++)
+                {
+                    Filename = Filename + (char)Data[6 + j];
+                }
+
+                if (ErrorCode == 0)
+                {
+                    FindNext(Handle);
+                    DebugTextBox.Invoke(new InvokeStr(AddFileToList), Filename);
+                } 
+
+
+            }
+
+                
+
         }
 
+void HideTabPage(TabPage page) 
+    {
+
+        if (TabController.TabPages.Contains(page))
+            TabController.TabPages.RemoveAt(
+                TabController.TabPages.IndexOf(page));
+            
+    }
+
+
+
+void ShowTabPage(TabPage page)
+    {
+
+if (! TabController.TabPages.Contains(page))
+TabController.TabPages.Add(page);
+    }
+void SwitchTabPage(TabPage page, bool mode)
+{
+    if (mode)
+        ShowTabPage(page);
+    else
+        HideTabPage(page);
+
+}
+
+        
+
+
+
+    private void logtext(string s)
+    {
+        DebugTextBox.Text = DebugTextBox.Text + s +  Environment.NewLine;
+      
+    }
+    void SetText(string text)
+    {
+        DebugTextBox.Text = text;
+    }
+
+    void NewBatteryData(int Voltage)
+    {
+        DebugTextBox.Text = Voltage.ToString()+" mV";
+    }
+ 
+
+    private void AddFileToList(string s)
+    {
+        FileSelector.Items.Add((string) s);
+    }
+    void GetBatteryLevel()
+    {
+        byte[] Command = { 0x00, 0x0B };
+        Send(Command);
+    }
+
+
+
+
+
+    void FindFirst(string Filter)
+    {
+
+        byte[] Command = new byte[21];
+
+        Command[0] = 0x01;
+        Command[1] = 0x86;
+
+        int j = 2;//6 //start writing the string to the byte array on the 7th byte
+        foreach (char ch in Filter.ToCharArray())
+        {
+
+            Command[j] = (byte)ch;
+            j++;
+        }
+        Send(Command);
+
+    }
+    void FindNext(byte OldHandle)
+        {
+
+
+            byte[] Command = new byte[3];
+
+            Command[0] = 0x01;
+            Command[1] = 0x87;
+            Command[2] = OldHandle;
+
+            Send(Command);
+
+        }
+    void Run(string Filter)
+    {
+
+        byte[] Command = new byte[21];
+
+        Command[0] = 0x00;
+        Command[1] = 0x00;
+
+
+        int j = 2;//6 //start writing the string to the byte array on the 7th byte
+        foreach (char ch in Filter.ToCharArray())
+        {
+
+            Command[j] = (byte)ch;
+            j++;
+        }
+        Send(Command);
+
+    }
+    void Stop()
+    {
+
+        byte[] Command = new byte[3];
+
+        Command[0] = 0x00;
+        Command[1] = 0x01;
+
+
+        Send(Command);
+
+    }
+
+
+        private void GetFileList_Click(object sender, EventArgs e)
+        {
+            FindFirst("*.rxe");
+        }
+
+
+        private void StartProgram_Click(object sender, EventArgs e)
+        {
+            Run(FileSelector.Text);
+
+        }
+
+
+        private void StopProgramBtn_Click(object sender, EventArgs e)
+        {
+            Stop();
+        }
+        bool switchitem(MenuItem Item)
+        {
+            Item.Checked = !Item.Checked;
+            return Item.Checked;
+        }
+
+        private void menuItem8_Click(object sender, EventArgs e)
+        {
+            //control
+            SwitchTabPage(ControlPage, switchitem((MenuItem)sender));
+            DoSavePages();
+        }
+
+        private void menuItem6_Click(object sender, EventArgs e)
+        {
+            //settinga
+            SwitchTabPage(SettingsPage,switchitem((MenuItem)sender));
+            DoSavePages();
+        }
+
+
+
+
+        private void shownxts_Click(object sender, EventArgs e)
+        {
+            //NXTs
+            SwitchTabPage(NXTsPage,switchitem((MenuItem)sender));
+            DoSavePages();
     
+        }
+
+
+
+        private void showfiles_Click(object sender, EventArgs e)
+        {
+            //Files
+            SwitchTabPage(FilesPage, switchitem((MenuItem)sender));
+            DoSavePages();
+        }
+
+        private void showdebug_Click(object sender, EventArgs e)
+        {
+            //Debug
+            SwitchTabPage(DebugPage, switchitem((MenuItem)sender));
+            DoSavePages();
+        }
+
+        private void showbuttons_Click(object sender, EventArgs e)
+        {
+            //buttons
+            SwitchTabPage(AryBtnPage, switchitem((MenuItem)sender));
+            DoSavePages();
+        }
+
+        private void Form1_Closing(object sender, CancelEventArgs e)
+        {
+          
+        }
+
+
+
 
         
        
