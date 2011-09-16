@@ -1181,7 +1181,7 @@
         5DB0/qbrzUu3vG5du73i9uBw6PCdkeiR0TvsO1N3U+6+uJd5b+H+xgfoB0UPpR5WPFJ81PCz7s9to5aj
         p8dcx/ofBz++P84af/ZLxi/vJwqekJ9UTKpMNk+ZTZ2adp++8XTl04ln6c8WZgp/lf619rnO8x9+c/yt
         fzZiduIF/8Wn30teyr889GrZq565gLlHr1NfL8wXvZF/c/gt423fu/B3kwtZ77HvKz/ofuj+6PPxwafU
-        T5/+BQOY8/yUGUl9AAAACXBIWXMAAAsQAAALEAGtI711AAAABmJLR0QA/wD/AP+gvaeTAAAAB3RJTUUH
+        T5/+BQOY8/yUGUl9AAAACXBIWXMAAAsMAAALDAE/QCLIAAAABmJLR0QA/wD/AP+gvaeTAAAAB3RJTUUH
         2wkJDS0mPson9gAA9SZJREFUeF6M/WkTJceRpQfXr5FJ6ulu7gQBEPtSALED3MGtuTXJ7pmx1ozsfWXS
         by/F48efSM+oW019SLtb7jeO+/Hj7pFP3n/6/rN333v32Vtvv72Wt2p58623nr33/vvH8t5aj+XdZ++8
         +2799vSDp88++PDDZx/+6MN6/eCDD9Z3WX70Ed9/8Oz9p+89e/udt5+9sxbef/DhB2u9p88++vhHax2W
@@ -4336,9 +4336,6 @@
         WNNo75arTAAAAABJRU5ErkJggg==
 </value>
   </data>
-  <metadata name="contextMenu1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-    <value>470, 17</value>
-  </metadata>
   <metadata name="$this.FormFactorShadowProperty" xml:space="preserve">
     <value>Pocket_PC_Phone</value>
   </metadata>
