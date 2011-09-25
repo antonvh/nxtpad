@@ -41,9 +41,12 @@
             this.shownxts = new System.Windows.Forms.MenuItem();
             this.showfiles = new System.Windows.Forms.MenuItem();
             this.showdebug = new System.Windows.Forms.MenuItem();
+            this.showsensors = new System.Windows.Forms.MenuItem();
             this.menuItem12 = new System.Windows.Forms.MenuItem();
-            this.menuItem4 = new System.Windows.Forms.MenuItem();
             this.menuItem3 = new System.Windows.Forms.MenuItem();
+            this.menuItem4 = new System.Windows.Forms.MenuItem();
+            this.menuItem6 = new System.Windows.Forms.MenuItem();
+            this.menuItem7 = new System.Windows.Forms.MenuItem();
             this.menuItem2 = new System.Windows.Forms.MenuItem();
             this.serialPort1 = new System.IO.Ports.SerialPort(this.components);
             this.TabController = new System.Windows.Forms.TabControl();
@@ -101,8 +104,17 @@
             this.DebugPage = new System.Windows.Forms.TabPage();
             this.TestBtn1 = new System.Windows.Forms.Button();
             this.DebugTextBox = new System.Windows.Forms.TextBox();
+            this.SensorPage = new System.Windows.Forms.TabPage();
+            this.button3 = new System.Windows.Forms.Button();
+            this.label4 = new System.Windows.Forms.Label();
+            this.textBox7 = new System.Windows.Forms.TextBox();
+            this.PollSensorBtn = new System.Windows.Forms.Button();
             this.btMsgTimer = new System.Windows.Forms.Timer();
             this.imageList1 = new System.Windows.Forms.ImageList();
+            this.timer1 = new System.Windows.Forms.Timer();
+            this.MessageLabel = new System.Windows.Forms.Label();
+            this.AnswerCheckbox = new System.Windows.Forms.CheckBox();
+            this.btQuery = new System.Windows.Forms.Timer();
             this.TabController.SuspendLayout();
             this.ControlPage.SuspendLayout();
             this.SettingsPage.SuspendLayout();
@@ -110,6 +122,7 @@
             this.FilesPage.SuspendLayout();
             this.NXTsPage.SuspendLayout();
             this.DebugPage.SuspendLayout();
+            this.SensorPage.SuspendLayout();
             this.SuspendLayout();
             // 
             // mainMenu1
@@ -121,7 +134,8 @@
             // 
             this.menuItem1.MenuItems.Add(this.menuItem5);
             this.menuItem1.MenuItems.Add(this.menuItem12);
-            this.menuItem1.Text = "Connection";
+            this.menuItem1.MenuItems.Add(this.menuItem6);
+            this.menuItem1.Text = "menu";
             this.menuItem1.Click += new System.EventHandler(this.button1_Click);
             // 
             // menuItem5
@@ -132,6 +146,7 @@
             this.menuItem5.MenuItems.Add(this.shownxts);
             this.menuItem5.MenuItems.Add(this.showfiles);
             this.menuItem5.MenuItems.Add(this.showdebug);
+            this.menuItem5.MenuItems.Add(this.showsensors);
             this.menuItem5.Text = "Features";
             // 
             // showcontrol
@@ -169,29 +184,46 @@
             this.showdebug.Text = "debug";
             this.showdebug.Click += new System.EventHandler(this.showdebug_Click);
             // 
+            // showsensors
+            // 
+            this.showsensors.Checked = true;
+            this.showsensors.Text = "sensors";
+            this.showsensors.Click += new System.EventHandler(this.showSensors_Click);
+            // 
             // menuItem12
             // 
-            this.menuItem12.MenuItems.Add(this.menuItem4);
             this.menuItem12.MenuItems.Add(this.menuItem3);
+            this.menuItem12.MenuItems.Add(this.menuItem4);
             this.menuItem12.Text = "Connection";
-            // 
-            // menuItem4
-            // 
-            this.menuItem4.Text = "Close";
-            this.menuItem4.Click += new System.EventHandler(this.menuItem4_Click);
             // 
             // menuItem3
             // 
             this.menuItem3.Text = "Open";
             this.menuItem3.Click += new System.EventHandler(this.openBtnClick);
             // 
+            // menuItem4
+            // 
+            this.menuItem4.Text = "Close";
+            this.menuItem4.Click += new System.EventHandler(this.menuItem4_Click);
+            // 
+            // menuItem6
+            // 
+            this.menuItem6.MenuItems.Add(this.menuItem7);
+            this.menuItem6.Text = "File";
+            // 
+            // menuItem7
+            // 
+            this.menuItem7.Text = "Exit";
+            this.menuItem7.Click += new System.EventHandler(this.menuItem7_Click);
+            // 
             // menuItem2
             // 
-            this.menuItem2.Text = "Exit";
-            this.menuItem2.Click += new System.EventHandler(this.menuItemExit_Click);
+            this.menuItem2.Text = "STOP";
+            this.menuItem2.Click += new System.EventHandler(this.menuItem2_Click);
             // 
             // serialPort1
             // 
+            this.serialPort1.ReadBufferSize = 1000;
             this.serialPort1.DataReceived += new System.IO.Ports.SerialDataReceivedEventHandler(this.serialPort1_DataReceived);
             // 
             // TabController
@@ -202,6 +234,7 @@
             this.TabController.Controls.Add(this.FilesPage);
             this.TabController.Controls.Add(this.NXTsPage);
             this.TabController.Controls.Add(this.DebugPage);
+            this.TabController.Controls.Add(this.SensorPage);
             this.TabController.Dock = System.Windows.Forms.DockStyle.Fill;
             this.TabController.Location = new System.Drawing.Point(0, 0);
             this.TabController.Name = "TabController";
@@ -213,6 +246,7 @@
             // 
             this.ControlPage.AutoScroll = true;
             this.ControlPage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.ControlPage.Controls.Add(this.MessageLabel);
             this.ControlPage.Controls.Add(this.pBAction4);
             this.ControlPage.Controls.Add(this.pBAction3);
             this.ControlPage.Controls.Add(this.pBAction2);
@@ -262,7 +296,7 @@
             // 
             this.pBled.BackColor = System.Drawing.Color.White;
             this.pBled.Image = ((System.Drawing.Image)(resources.GetObject("pBled.Image")));
-            this.pBled.Location = new System.Drawing.Point(220, 0);
+            this.pBled.Location = new System.Drawing.Point(220, 7);
             this.pBled.Name = "pBled";
             this.pBled.Size = new System.Drawing.Size(20, 18);
             this.pBled.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
@@ -297,13 +331,14 @@
             this.pBBackground.Image = ((System.Drawing.Image)(resources.GetObject("pBBackground.Image")));
             this.pBBackground.Location = new System.Drawing.Point(0, 0);
             this.pBBackground.Name = "pBBackground";
-            this.pBBackground.Size = new System.Drawing.Size(240, 245);
+            this.pBBackground.Size = new System.Drawing.Size(240, 270);
             this.pBBackground.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.pBBackground.MouseUp += new System.Windows.Forms.MouseEventHandler(this.pBBackground_MouseUp);
             // 
             // SettingsPage
             // 
             this.SettingsPage.AutoScroll = true;
+            this.SettingsPage.Controls.Add(this.AnswerCheckbox);
             this.SettingsPage.Controls.Add(this.Fullscreen);
             this.SettingsPage.Controls.Add(this.AryBtnCheckbox);
             this.SettingsPage.Controls.Add(this.CB_Toggling);
@@ -330,7 +365,7 @@
             // 
             this.AryBtnCheckbox.BackColor = System.Drawing.Color.Transparent;
             this.AryBtnCheckbox.ForeColor = System.Drawing.Color.Black;
-            this.AryBtnCheckbox.Location = new System.Drawing.Point(28, 193);
+            this.AryBtnCheckbox.Location = new System.Drawing.Point(30, 193);
             this.AryBtnCheckbox.Name = "AryBtnCheckbox";
             this.AryBtnCheckbox.Size = new System.Drawing.Size(182, 20);
             this.AryBtnCheckbox.TabIndex = 14;
@@ -419,7 +454,7 @@
             this.AryBtnPage.Controls.Add(this.bgr);
             this.AryBtnPage.Location = new System.Drawing.Point(0, 0);
             this.AryBtnPage.Name = "AryBtnPage";
-            this.AryBtnPage.Size = new System.Drawing.Size(232, 242);
+            this.AryBtnPage.Size = new System.Drawing.Size(240, 245);
             this.AryBtnPage.Text = "buttons";
             // 
             // textBox6
@@ -495,6 +530,7 @@
             this.pictureBox22.Size = new System.Drawing.Size(44, 31);
             this.pictureBox22.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.pictureBox22.Tag = "10";
+            this.pictureBox22.Click += new System.EventHandler(this.pictureBox22_Click);
             this.pictureBox22.MouseDown += new System.Windows.Forms.MouseEventHandler(this.pictureBox1_MouseDown);
             this.pictureBox22.MouseUp += new System.Windows.Forms.MouseEventHandler(this.pictureBox1_MouseUp);
             // 
@@ -614,7 +650,7 @@
             this.bgr.Image = ((System.Drawing.Image)(resources.GetObject("bgr.Image")));
             this.bgr.Location = new System.Drawing.Point(0, 0);
             this.bgr.Name = "bgr";
-            this.bgr.Size = new System.Drawing.Size(233, 227);
+            this.bgr.Size = new System.Drawing.Size(240, 245);
             this.bgr.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             // 
             // FilesPage
@@ -722,6 +758,7 @@
             this.SavePort.Name = "SavePort";
             this.SavePort.Size = new System.Drawing.Size(93, 22);
             this.SavePort.TabIndex = 3;
+            this.SavePort.TextChanged += new System.EventHandler(this.SavePort_TextChanged);
             // 
             // SaveName
             // 
@@ -773,6 +810,49 @@
             this.DebugTextBox.Size = new System.Drawing.Size(200, 110);
             this.DebugTextBox.TabIndex = 0;
             // 
+            // SensorPage
+            // 
+            this.SensorPage.Controls.Add(this.button3);
+            this.SensorPage.Controls.Add(this.label4);
+            this.SensorPage.Controls.Add(this.textBox7);
+            this.SensorPage.Controls.Add(this.PollSensorBtn);
+            this.SensorPage.Location = new System.Drawing.Point(0, 0);
+            this.SensorPage.Name = "SensorPage";
+            this.SensorPage.Size = new System.Drawing.Size(232, 242);
+            this.SensorPage.Text = "sensors";
+            // 
+            // button3
+            // 
+            this.button3.Location = new System.Drawing.Point(125, 156);
+            this.button3.Name = "button3";
+            this.button3.Size = new System.Drawing.Size(74, 31);
+            this.button3.TabIndex = 3;
+            this.button3.Text = "button3";
+            // 
+            // label4
+            // 
+            this.label4.Location = new System.Drawing.Point(22, 76);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(104, 21);
+            this.label4.Text = "Port";
+            // 
+            // textBox7
+            // 
+            this.textBox7.Location = new System.Drawing.Point(22, 100);
+            this.textBox7.Name = "textBox7";
+            this.textBox7.Size = new System.Drawing.Size(194, 21);
+            this.textBox7.TabIndex = 1;
+            this.textBox7.Text = "1";
+            // 
+            // PollSensorBtn
+            // 
+            this.PollSensorBtn.Location = new System.Drawing.Point(22, 29);
+            this.PollSensorBtn.Name = "PollSensorBtn";
+            this.PollSensorBtn.Size = new System.Drawing.Size(197, 25);
+            this.PollSensorBtn.TabIndex = 0;
+            this.PollSensorBtn.Text = "Poll Sensor Values";
+            this.PollSensorBtn.Click += new System.EventHandler(this.button3_Click_2);
+            // 
             // btMsgTimer
             // 
             this.btMsgTimer.Enabled = true;
@@ -785,6 +865,37 @@
             this.imageList1.Images.Clear();
             this.imageList1.Images.Add(((System.Drawing.Image)(resources.GetObject("resource"))));
             this.imageList1.Images.Add(((System.Drawing.Image)(resources.GetObject("resource1"))));
+            // 
+            // timer1
+            // 
+            this.timer1.Interval = 200;
+            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+            // 
+            // MessageLabel
+            // 
+            this.MessageLabel.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.MessageLabel.ForeColor = System.Drawing.Color.White;
+            this.MessageLabel.Location = new System.Drawing.Point(20, 248);
+            this.MessageLabel.Name = "MessageLabel";
+            this.MessageLabel.Size = new System.Drawing.Size(200, 22);
+            this.MessageLabel.Text = "No Message";
+            this.MessageLabel.Visible = false;
+            // 
+            // AnswerCheckbox
+            // 
+            this.AnswerCheckbox.BackColor = System.Drawing.Color.Transparent;
+            this.AnswerCheckbox.ForeColor = System.Drawing.Color.Black;
+            this.AnswerCheckbox.Location = new System.Drawing.Point(28, 219);
+            this.AnswerCheckbox.Name = "AnswerCheckbox";
+            this.AnswerCheckbox.Size = new System.Drawing.Size(195, 20);
+            this.AnswerCheckbox.TabIndex = 17;
+            this.AnswerCheckbox.Text = "Enable Messages NXT->PPC";
+            this.AnswerCheckbox.CheckStateChanged += new System.EventHandler(this.AnswerCheckbox_CheckStateChanged);
+            // 
+            // btQuery
+            // 
+            this.btQuery.Interval = 70;
+            this.btQuery.Tick += new System.EventHandler(this.btQuery_Tick);
             // 
             // Form1
             // 
@@ -805,6 +916,7 @@
             this.FilesPage.ResumeLayout(false);
             this.NXTsPage.ResumeLayout(false);
             this.DebugPage.ResumeLayout(false);
+            this.SensorPage.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -881,6 +993,18 @@
         private System.Windows.Forms.MenuItem showfiles;
         private System.Windows.Forms.MenuItem showdebug;
         private System.Windows.Forms.MenuItem menuItem12;
+        private System.Windows.Forms.TabPage SensorPage;
+        private System.Windows.Forms.Button PollSensorBtn;
+        private System.Windows.Forms.TextBox textBox7;
+        private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.MenuItem showsensors;
+        private System.Windows.Forms.MenuItem menuItem6;
+        private System.Windows.Forms.MenuItem menuItem7;
+        private System.Windows.Forms.Button button3;
+        private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.Label MessageLabel;
+        private System.Windows.Forms.CheckBox AnswerCheckbox;
+        private System.Windows.Forms.Timer btQuery;
 
     }
 }
