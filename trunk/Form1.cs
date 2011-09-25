@@ -32,16 +32,26 @@ namespace NxtPad
             public bool toggle;
             public bool down;
         }
+        public struct InMessage
+        {
+            public DateTime time;
+            public string message;
+            public byte flags;
+
+        }
         //for btn Array
         public bool ButtonArraySetup = false;
         AryButton[] Buttons = new AryButton[12];
         string[] ABNames = new string[6];
+        bool changed = false;
+        bool enablesend = true;
         //for Actionbtns
         private bool[] actiondown=new bool[4];
         private int newx=0, newy=0, oldx = 0, oldy = 0, actionInt = 0;
         private bool actionButtonPressed = false;
         private char[] action = {'0','0','0','0'}; //legacy array for storing which action button was pressed
-
+        int beeppos = 0;
+   
         //private bool dialogvisible  = false;
         //for saving
         //2 Keys, one to Store the DEVices and their matching Com port, one to store general settings
@@ -106,9 +116,7 @@ namespace NxtPad
 
         private void menuItemExit_Click(object sender, EventArgs e)
         {
-            serialPort1.Close();
-            Application.Exit();
-         
+
 
 
         }
@@ -146,14 +154,17 @@ namespace NxtPad
         // this function is called on timer1.click, every 60ms.
         private void btMsgTimerHandler(object sender, EventArgs e)
         {
-            if ((newx != oldx) || (newy != oldy) || actionButtonPressed)
-            {
-                oldx = newx;
-                oldy = newy;
-                sendToNxt(newx, newy);
+           
+            
+                if ((newx != oldx) || (newy != oldy) || actionButtonPressed)
+                {
+                    oldx = newx;
+                    oldy = newy;
+                    sendToNxt(newx, newy);
 
-                actionButtonPressed = false;
-            }
+                    actionButtonPressed = false;
+                }
+
         }
 
         //the function for calculating the byte message and sending it.
@@ -263,10 +274,20 @@ namespace NxtPad
             {
               //  pBled.Visible = true;
                 //Need Invoke
-
+                
                 try
                 {
+                    while (serialPort1.BytesToWrite != 0) ;
+                    //while (serialPort1.BytesToRead != 0) ;
+                    int a = serialPort1.BytesToWrite;
+                    int b = serialPort1.BytesToRead;
+                    if (a!= 0) 
+                        MessageBox.Show(String.Concat("Nicht leer W", a.ToString()));
+                    //if (b!= 0)
+                        //MessageBox.Show(String.Concat("Nicht leer R", b.ToString()));
+                   
                     serialPort1.Write(All, 0, All.Length);
+                  
                 }
                 catch
                 {
@@ -308,6 +329,7 @@ namespace NxtPad
 
         private void openBtnClick(object sender, EventArgs e)
         {
+            enablesend = false;
             serialPort1.Close();
             //serialPort1.PortName = comboBoxComports.SelectedItem.ToString();
             serialPort1.PortName = comboBoxComports.Text.ToString();
@@ -315,6 +337,8 @@ namespace NxtPad
             {
                 serialPort1.Open();
                 pBled.Visible = true;
+                SendWelcomeBeep();
+                enablesend = true;
             }
             catch
             {
@@ -390,19 +414,28 @@ namespace NxtPad
 
 
         }
+        void AskSave()
+        {
+            if (changed)
+            {
+               DialogResult DR= MessageBox.Show("Data has not been saved yet. Do now? You'll lose latest changes else.", "Not saved yet.", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
+               if (DR == DialogResult.Yes)
+               {
+                   DoSave();
+               }
 
-
-       
-        private void button3_Click(object sender, EventArgs e)
+            }
+        }
+        void DoSave()
         {
             //Save
             //First saving crashes app (maybe first loading)
             DevKey.CreateSubKey(SaveName.Text).SetValue("Port", SavePort.SelectedItem.ToString());
             //Port
-            
+
             for (int i = 0; i < ABNames.Count(); i++)
             {
-                DevKey.CreateSubKey(SaveName.Text).SetValue("BTNName"+i,ABNames[i]); 
+                DevKey.CreateSubKey(SaveName.Text).SetValue("BTNName" + i, ABNames[i]);
             }
             DevKey.CreateSubKey(SaveName.Text).SetValue("BTNName", ABNames.Count());
 
@@ -413,7 +446,18 @@ namespace NxtPad
             }
             DevKey.CreateSubKey(SaveName.Text).SetValue("BTNToggle", Buttons.Count());
             DevKey.CreateSubKey(SaveName.Text).SetValue("Port", SavePort.SelectedItem.ToString());
-           LoadDevices();
+            DevKey.CreateSubKey(SaveName.Text).SetValue("ProgName", FileSelector.Text);
+
+            
+            LoadDevices();
+            changed = false;
+
+
+        }
+       
+        private void button3_Click(object sender, EventArgs e)
+        {
+            DoSave();
 
 
         }
@@ -436,9 +480,13 @@ namespace NxtPad
             SavePort.Text = (string)DevKey.CreateSubKey(NXTName).GetValue("Port");
             SaveName.Text = NXTName;
             comboBoxComports.Text = SavePort.Text;
+            FileSelector.Text= (string)DevKey.CreateSubKey(NXTName).GetValue("ProgName");
+            //Doesen't work as expected
             //Save the last used NXT
-            SettingsKey.SetValue("LastNXT", NXTName);  
-        
+            SettingsKey.SetValue("LastNXT", NXTName);
+
+       
+            changed = false;
         }
         
        void getinfo(string regname, MenuItem Item, TabPage page, RegistryKey TabKey)
@@ -470,8 +518,8 @@ namespace NxtPad
             getinfo("files", showfiles, FilesPage, TabKey);
             getinfo("buttons", showbuttons, AryBtnPage, TabKey);
             getinfo("debug", showdebug, DebugPage, TabKey);
+            getinfo("sensors", showsensors,SensorPage, TabKey);
 
-            
 
         }
         private void DoSavePages()
@@ -484,12 +532,14 @@ namespace NxtPad
             setinfo("files", showfiles,  TabKey);
             setinfo("buttons", showbuttons,  TabKey);
             setinfo("debug", showdebug,  TabKey);
+            setinfo("sensors", showsensors, TabKey);
 
 
 
         }
         private void SaveList_SelectedIndexChanged(object sender, EventArgs e)
         {
+            AskSave();
             DoLoad((string)SaveList.SelectedItem);
         
         }
@@ -511,7 +561,7 @@ namespace NxtPad
                   ((PictureBox)sender).Image = imageList1.Images[1];
               else 
                   ((PictureBox)sender).Image = imageList1.Images[0];
-
+               changed = true;
 
             }
             else
@@ -583,6 +633,7 @@ namespace NxtPad
                 this.WindowState =
                 FormWindowState.Maximized;
                 this.Menu = null;
+                MessageLabel.Visible = true;
 
             }
             else
@@ -590,6 +641,7 @@ namespace NxtPad
                 this.WindowState =
                     FormWindowState.Normal;
                 this.Menu = mainMenu1;
+                MessageLabel.Visible = false;
             }
         }
 
@@ -633,15 +685,17 @@ namespace NxtPad
                 byte Handle = Data[5];
                 string Filename;
                 Filename = "";
-                for (int j = 0; j < 18; j++)
+                for (int j = 0; j < 19; j++)
                 {
                     Filename = Filename + (char)Data[6 + j];
                 }
                 if (ErrorCode == 0)
                 {
-                    DebugTextBox.Invoke(new InvokeStr(AddFileToList), Filename);
+                    FileSelector.Invoke(new InvokeStr(AddFileToList), Filename);
                     FindNext(Handle);
                 }
+                else
+                    DoLogText("error");
                 
 
             }
@@ -659,15 +713,107 @@ namespace NxtPad
                 if (ErrorCode == 0)
                 {
                     FindNext(Handle);
-                    DebugTextBox.Invoke(new InvokeStr(AddFileToList), Filename);
-                } 
+                    FileSelector.Invoke(new InvokeStr(AddFileToList), Filename);
+                }
+                else
+                {
+                    DoLogText("error");
+                    enablesend = true;
+                }
 
 
             }
+            if ((Data[2] == 02) && (Data[3] == 0x07))//GetInputValues
+            {
+                byte ErrorCode = Data[4];
+                byte Port = Data[5];
+                byte DataValid = Data[6];
+                byte DataCalib = Data[7];
+                byte SensorType = Data[8];
+                byte SensorMode = Data[9];
+
+                
+                UInt16 Raw = BitConverter.ToUInt16(Data, 10);
+
+                UInt16 NormData = BitConverter.ToUInt16(Data, 12);
+
+                Int16 ScaleData = BitConverter.ToInt16(Data, 14);
+                DebugTextBox.Invoke(new InvokeStr(logtext), ScaleData.ToString());
+    
+            
+            }
+            if ((Data[2] == 02) && (Data[3] == 0x13))//ReadMessage
+            {
+                byte Status = Data[4];
+                byte LocalMailBoxNr = Data[5];
+                byte Size = Data[6];
+               
+
+                string Text;
+                Text = "";
+                for (int j = 0; j < (Size-1); j++)
+                {
+                    Text = Text + (char)Data[7 + j];
+                }
+              
+                DisplayMessage(ParseMessage(Text));
+            }
+
 
                 
 
         }
+
+InMessage ParseMessage(string Text)
+{
+    InMessage tmp=new InMessage();
+    tmp.flags = 0;
+
+    if (!(Text == ""))    {
+       
+           tmp.time = DateTime.Now;
+        tmp.flags = Convert.ToByte (Text.Substring(0,2));
+        tmp.message = Text.Substring(3, Text.Length - 3);
+       
+       
+    }
+
+
+    return tmp;
+  
+    }
+[DllImport("CoreDll.dll")]
+public static extern void MessageBeep(int code); 
+
+void DisplayMessage(InMessage Message)
+{
+    
+    if ((Message.flags & 8) == 8)
+    {
+        MessageBeep(-1);
+
+    }
+    if ((Message.flags & 1)==1)
+    {
+        DoSetMessage(Message.message);
+     
+    }
+
+    if ((Message.flags & 2) == 2)
+    {
+        DoLogText(Message.message);
+
+    }
+    if ((Message.flags & 4)==4)
+    {
+        MessageBox.Show(Message.message);
+
+    }  
+
+}
+
+
+
 
 void HideTabPage(TabPage page) 
     {
@@ -695,14 +841,31 @@ void SwitchTabPage(TabPage page, bool mode)
 
 }
 
-        
 
 
-
+void DoLogText(string Text)
+{
+    DebugTextBox.Invoke(new InvokeStr(logtext), Text);
+}
     private void logtext(string s)
     {
+        if (!(s==""))
         DebugTextBox.Text = DebugTextBox.Text + s +  Environment.NewLine;
       
+    }
+
+    void DoSetMessage(string Text)
+    {
+        if (MessageLabel.InvokeRequired)
+            MessageLabel.Invoke(new InvokeStr(setmessagelabel), Text);
+        else
+            setmessagelabel(Text);
+    }
+        private void setmessagelabel(string s)
+    {
+        if (!(s == ""))
+            MessageLabel.Text = s;
+
     }
     void SetText(string text)
     {
@@ -731,7 +894,7 @@ void SwitchTabPage(TabPage page, bool mode)
 
     void FindFirst(string Filter)
     {
-
+        enablesend = false;
         byte[] Command = new byte[21];
 
         Command[0] = 0x01;
@@ -760,6 +923,42 @@ void SwitchTabPage(TabPage page, bool mode)
             Send(Command);
 
         }
+
+
+        void SendBeep(UInt16 freq,UInt16 duration)
+        {
+
+
+            byte[] Command = new byte[6];
+
+            Command[0] = 0x80;
+            Command[1] = 0x03;
+            Command[2] = (byte)(freq & 0xff);
+            Command[3] = (byte)(freq >> 8);
+            Command[4] = (byte)(duration & 0xff);
+            Command[5] = (byte)(duration >> 8);
+            Send(Command);
+
+        }
+    void MessageRead(byte Remotebox, byte Localbox, bool remove)
+    {
+
+
+        byte[] Command = new byte[5];
+
+        Command[0] = 0x00;
+        Command[1] = 0x13;
+        Command[2] = Remotebox;
+        Command[3] = Localbox;
+        if (remove)
+            Command[4] = 0x01;
+        else
+            Command[4] = 0x00;
+
+
+        Send(Command);
+
+    }
     void Run(string Filter)
     {
 
@@ -782,7 +981,7 @@ void SwitchTabPage(TabPage page, bool mode)
     void Stop()
     {
 
-        byte[] Command = new byte[3];
+        byte[] Command = new byte[2];
 
         Command[0] = 0x00;
         Command[1] = 0x01;
@@ -869,6 +1068,94 @@ void SwitchTabPage(TabPage page, bool mode)
           
         }
 
+        private void button3_Click_2(object sender, EventArgs e)
+        {
+            byte[] Command = new byte[3];
+
+            Command[0] = 0x00;
+            Command[1] = 0x07;
+            Command[2] = Convert.ToByte(textBox7.Text);
+
+
+            Send(Command);
+
+        }
+
+        private void showSensors_Click(object sender, EventArgs e)
+        {
+            //buttons
+            SwitchTabPage(SensorPage, switchitem((MenuItem)sender));
+            DoSavePages();
+
+        }
+
+        private void menuItem7_Click(object sender, EventArgs e)
+        {
+
+            AskSave();
+            serialPort1.Close();
+            Application.Exit();
+         
+        }
+
+        private void pictureBox22_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void SavePort_TextChanged(object sender, EventArgs e)
+        {
+            changed = true;
+        }
+
+        private void menuItem2_Click(object sender, EventArgs e)
+        {
+            Stop();
+        }
+        void SendWelcomeBeep()
+        {
+            beeppos = 0;
+            timer1.Enabled = true;
+        }
+
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            byte time = 200;
+        if (beeppos==0)
+            SendBeep(780, time);//N
+        if (beeppos == 1)
+            SendBeep(880, time);//X
+        if (beeppos == 2)
+            SendBeep(840, time);//T
+        if (beeppos == 3)
+            SendBeep(800, time);//P
+        if (beeppos == 4)
+            SendBeep(970, time);//a
+        if (beeppos == 5)
+            SendBeep(1000, time);//d
+        if (beeppos >= 6)
+            timer1.Enabled = false;
+    
+
+            beeppos++;
+
+        }
+
+        private void AnswerCheckbox_CheckStateChanged(object sender, EventArgs e)
+        {
+            btQuery.Enabled=((CheckBox) sender).Checked;
+        }
+
+        private void btQuery_Tick(object sender, EventArgs e)
+        {
+            if (enablesend)
+            {
+                MessageRead(0x01, 1, true);
+            }
+        }
+
+ 
 
 
 
