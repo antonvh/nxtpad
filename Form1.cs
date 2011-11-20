@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Text;
 using System.IO;
 using Microsoft.Win32;
@@ -39,40 +40,59 @@ namespace NxtPad
             public byte flags;
 
         }
+        public Com NXT = new Com();
         //for btn Array
         public bool ButtonArraySetup = false;
         AryButton[] Buttons = new AryButton[12];
         string[] ABNames = new string[6];
         bool changed = false;
         bool enablesend = true;
+        bool send0whenreleased = true;
+        bool loading = false;
         //for Actionbtns
         private bool[] actiondown=new bool[4];
+        public bool[] actiontoggle = {false,false,false,false};//false= no toggeling
         private int newx=0, newy=0, oldx = 0, oldy = 0, actionInt = 0;
         private bool actionButtonPressed = false;
         private char[] action = {'0','0','0','0'}; //legacy array for storing which action button was pressed
-        int beeppos = 0;
+        int angle = 0;
+        int V1,V2,V3;
    
         //private bool dialogvisible  = false;
         //for saving
         //2 Keys, one to Store the DEVices and their matching Com port, one to store general settings
         RegistryKey DevKey = Registry.CurrentUser.CreateSubKey("SOFTWARE\\NXTPad\\Devices");
         RegistryKey SettingsKey = Registry.CurrentUser.CreateSubKey("SOFTWARE\\NXTPad");
+        
         private void LoadDevices()
         {
            //Clears the Displayed list and rebuild it using the Registry
-            SaveList.Items.Clear();
+            ProfileCombobox.Items.Clear();
             foreach (string i in DevKey.GetSubKeyNames())
             {
-                SaveList.Items.Add(i);
+                ProfileCombobox.Items.Add(i);
             }
 
+            
         }
         private void Setup(object sender, EventArgs e)
         {
+            
+            NXT._OnBattery += new Com.IntegerHandler(OnBattery);
+            NXT._OnError += new Com.StringHandler(OnError);
+            NXT._OnFindFirst += new Com.StringHandler(OnFindFirst);
+            NXT._OnFindNext += new Com.StringHandler(OnFindSth);
+            NXT._OnInputData += new Com.InputHandler(OnInputData);
+            NXT._OnMailBox += new Com.MailboxHandler(OnMailBox);
+            NXT._OnOutputData += new Com.OutputHandler(OnOutput);
+
+            ReleaseBehavior.SelectedIndex = 0;
             LoadDevices();
             comboBoxComports.SelectedIndex = 1; //my default setting: COM1
-            serialPort1.Close();//just to   be sure.
-            serialPort1.PortName = "COM1";//my default
+            NXT.Close();
+            
+            //serialPort1.Close();//just to   be sure.
+            //serialPort1.PortName = "COM1";//my default
             
             //if LastNXT is saved, load it and goto save page
           string NXTName=(string) SettingsKey.GetValue("LastNXT","");
@@ -82,10 +102,12 @@ namespace NxtPad
                 DoLoad((string)NXTName);
             }
 
-          foreach (Control C in AryBtnPage.Controls)
+          /*
+           * foreach (Control C in AryBtnPage.Controls)
               if (C is PictureBox)
                   if (C.Name!="bgr")
                   ((PictureBox)C).Image = imageList1.Images[0];
+           * */
           for (int i = 0; i < ABNames.Count(); i++)
           {
               ABNames[i] = "";
@@ -93,16 +115,41 @@ namespace NxtPad
 
               
 
-          pBAction1.Image = imageList1.Images[0];
-          pBAction2.Image = imageList1.Images[0];
-          pBAction3.Image = imageList1.Images[0];
-          pBAction4.Image = imageList1.Images[0];
-          DoLoadPages();
+          pBR1B1.Image = ButtonImgList.Images[0];
+          pBR1B2.Image = ButtonImgList.Images[0];
+          pBR1B3.Image = ButtonImgList.Images[0];
+          pBR1B4.Image = ButtonImgList.Images[0];
+
+          DrawNavBtn(1);
+        }
+        private void DrawNavBtn(int active)
+        {
+           NavImg1.Image= NavImgList.Images[0];//Control
+           NavImg2.Image = NavImgList.Images[1];//Settings
+           NavImg3.Image = NavImgList.Images[2];//Programs
+           NavImg4.Image = NavImgList.Images[3];//Stop
+           if (active==1)
+           {
+               NavImg1.Image = NavImgList.Images[4]; 
+           }
+           if (active == 2)
+           {
+               NavImg2.Image = NavImgList.Images[5];
+           }
+           if (active == 3)
+           {
+               NavImg3.Image = NavImgList.Images[6];
+           }
+           if (active == 4)
+           {
+               NavImg4.Image = NavImgList.Images[7];
+           }
+
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            try
+         /*   try
             {
                 byte[] data = { 0x06, 0x00, 0x80, 0x03, 0xff, 0x01, 0xff, 0x00 };
                 serialPort1.Write(data, 0, 8);
@@ -110,16 +157,12 @@ namespace NxtPad
             catch
             {
                 MessageBox.Show("Error sending beep command");
-            }
+            }*/
+
         }
                    
 
-        private void menuItemExit_Click(object sender, EventArgs e)
-        {
 
-
-
-        }
 
         private void pictureBox1_MouseMove(object sender, MouseEventArgs e)
         {
@@ -255,68 +298,13 @@ namespace NxtPad
             //putting it all together
             System.Buffer.BlockCopy(CommandHeader, 0, Command, 0, CommandHeader.Length);
             
-            Send(Command);
+            NXT.Send(Command);
 
          
 
                  
          }
-        void Send(byte[] Data)
-        {
-            byte[] All=new byte[Data.Length+3];
-            All[0]=(byte)(Data.Length+1);
-            All[1]=0;
-            Array.Copy(Data, 0, All, 2, Data.Length);
-            All[All.Length-1] = 0;
-            
-
-            if (serialPort1.IsOpen)
-            {
-              //  pBled.Visible = true;
-                //Need Invoke
-                
-                try
-                {
-                    while (serialPort1.BytesToWrite != 0) ;
-                    //while (serialPort1.BytesToRead != 0) ;
-                    int a = serialPort1.BytesToWrite;
-                    int b = serialPort1.BytesToRead;
-                    if (a!= 0) 
-                        MessageBox.Show(String.Concat("Nicht leer W", a.ToString()));
-                    //if (b!= 0)
-                        //MessageBox.Show(String.Concat("Nicht leer R", b.ToString()));
-                   
-                    serialPort1.Write(All, 0, All.Length);
-                  
-                }
-                catch
-                {
-                    MessageBox.Show("Error while sending");
-                    serialPort1.Close();
-                }
-
-            }
-            else
-            {
-                pBled.Visible = false;
-                try
-                {
-                    //  serialPort1.Open();
-                    //  pBled.Visible = true;
-                }
-                catch
-                {
-                    pBled.Visible = false;
-                    //if (!dialogvisible){
-                    //result = MessageBox.Show("Error opening " + serialPort1.PortName);
-                    //dialogvisible = true;
-                    //if (result == DialogResult.OK) {//resume
-                    //}
-                    //}
-                    //MessageBox.Show(result.ToString);
-                }
-            }
-        }
+       
 
         private string nfs(int nr) //create a 4-character string of any number. first character is sign.
         {
@@ -330,20 +318,18 @@ namespace NxtPad
         private void openBtnClick(object sender, EventArgs e)
         {
             enablesend = false;
-            serialPort1.Close();
-            //serialPort1.PortName = comboBoxComports.SelectedItem.ToString();
-            serialPort1.PortName = comboBoxComports.Text.ToString();
-            try
+            NXT.Close();
+            NXT.SetPort( comboBoxComports.Text.ToString());
+            if (NXT.Open())
+
             {
-                serialPort1.Open();
-                pBled.Visible = true;
-                SendWelcomeBeep();
+//                pBled.Visible = true;
                 enablesend = true;
             }
-            catch
+            else
             {
-                MessageBox.Show("Error opening "+serialPort1.PortName);
-                pBled.Visible = false;
+                MessageBox.Show("Error opening ComPort");
+                //pBled.Visible = false;
             }
         }
 
@@ -364,14 +350,11 @@ namespace NxtPad
 
         private void menuItem4_Click(object sender, EventArgs e)
         {
-            serialPort1.Close();
+            NXT.Close();
         }
 
         private void pBBackground_MouseUp(object sender, MouseEventArgs e)
         {
-            if (!CB_Toggling.Checked)
-            {
-            }
             actionButtonPressed = true;
             
         }
@@ -380,37 +363,43 @@ namespace NxtPad
 
         private void pad_MouseUp(object sender, MouseEventArgs e)
         {
-            if (checkBox1.Checked) {newx =0;newy=0;}
+            if (send0whenreleased) { newx = 0; newy = 0; }
         }
-
+      
         private void pBAction1_MouseDown(object sender, MouseEventArgs e)
         {
-            if (CB_Toggling.Checked)
-                
-                actiondown[Convert.ToInt32(((PictureBox)sender).Tag)] = ! actiondown[Convert.ToInt32(((PictureBox)sender).Tag)];
-            else
-                actiondown[Convert.ToInt32(((PictureBox)sender).Tag)] = true;
+            int ButtonNr=Convert.ToInt32(((PictureBox)sender).Tag);
             
-            setActionOutput(actiondown[Convert.ToInt32(((PictureBox)sender).Tag)], Convert.ToInt32(((PictureBox)sender).Tag) + 1);
-            actionButtonPressed = true;
-            if (actiondown[Convert.ToInt32(((PictureBox)sender).Tag)])
-                ((PictureBox)sender).Image = imageList1.Images[1];
+            if (actiontoggle[ButtonNr])
+
+                actiondown[ButtonNr] = !actiondown[ButtonNr];
             else
-                ((PictureBox)sender).Image = imageList1.Images[0];
+                actiondown[ButtonNr] = true;
+
+            setActionOutput(actiondown[ButtonNr], ButtonNr + 1);
+            actionButtonPressed = true;
+            if (actiondown[ButtonNr])
+                ((PictureBox)sender).Image = ButtonImgList.Images[1];
+            else
+                ((PictureBox)sender).Image = ButtonImgList.Images[0];
         }
+
+
         private void pBAction1_MouseUp(object sender, MouseEventArgs e)
         {
-            if (!CB_Toggling.Checked)
+            int ButtonNr = Convert.ToInt32(((PictureBox)sender).Tag);
+            
+            if (!actiontoggle[ButtonNr])
             {
-                actiondown[Convert.ToInt32(((PictureBox)sender).Tag)] = false;
+                actiondown[ButtonNr] = false;
                 actionButtonPressed = true;
-                setActionOutput(actiondown[Convert.ToInt32(((PictureBox)sender).Tag)], Convert.ToInt32(((PictureBox)sender).Tag) + 1);
+                setActionOutput(actiondown[ButtonNr], ButtonNr + 1);
             }
                
-            if (actiondown[Convert.ToInt32(((PictureBox)sender).Tag)])
-                ((PictureBox)sender).Image = imageList1.Images[1];
+            if (actiondown[ButtonNr])
+                ((PictureBox)sender).Image = ButtonImgList.Images[1];
                 else
-                ((PictureBox)sender).Image = imageList1.Images[0];
+                ((PictureBox)sender).Image = ButtonImgList.Images[0];
 
 
         }
@@ -430,137 +419,110 @@ namespace NxtPad
         {
             //Save
             //First saving crashes app (maybe first loading)
-            DevKey.CreateSubKey(SaveName.Text).SetValue("Port", SavePort.SelectedItem.ToString());
+            string Savename = SaveText.Text;
+                // ProfileCombobox.Text;
+
+            RegistryKey SaveRegistryKey = DevKey.CreateSubKey(Savename);
+            SaveRegistryKey.SetValue("Port", comboBoxComports.Text);
             //Port
+
+            for (int i = 0; i < 3; i++)
+            {
+                SaveRegistryKey.SetValue("MainBTNToggle" + i, (bool)actiontoggle[i]);
+            }
+
+
+
 
             for (int i = 0; i < ABNames.Count(); i++)
             {
-                DevKey.CreateSubKey(SaveName.Text).SetValue("BTNName" + i, ABNames[i]);
+                SaveRegistryKey.SetValue("BTNName" + i, ABNames[i]);
             }
-            DevKey.CreateSubKey(SaveName.Text).SetValue("BTNName", ABNames.Count());
+            SaveRegistryKey.SetValue("BTNName", ABNames.Count());
 
             for (int i = 0; i < Buttons.Count(); i++)
             {
-                DevKey.CreateSubKey(SaveName.Text).SetValue("BTNToggle" + i, (bool)Buttons[i].toggle);
-                DevKey.CreateSubKey(SaveName.Text).SetValue("BTNDown" + i, (bool)Buttons[i].down);
+                SaveRegistryKey.SetValue("BTNToggle" + i, (bool)Buttons[i].toggle);
+                SaveRegistryKey.SetValue("BTNDown" + i, (bool)Buttons[i].down);
             }
-            DevKey.CreateSubKey(SaveName.Text).SetValue("BTNToggle", Buttons.Count());
-            DevKey.CreateSubKey(SaveName.Text).SetValue("Port", SavePort.SelectedItem.ToString());
-            DevKey.CreateSubKey(SaveName.Text).SetValue("ProgName", FileSelector.Text);
-
+            SaveRegistryKey.SetValue("BTNToggle", Buttons.Count());
+            SaveRegistryKey.SetValue("Port", comboBoxComports.SelectedItem.ToString());
+            SaveRegistryKey.SetValue("ProgName", FileSelector.Text);
+            SaveRegistryKey.SetValue("ReleaseBehavior", ReleaseBehavior.SelectedIndex);
             
             LoadDevices();
             changed = false;
-
+            SaveRegistryKey.Close();
 
         }
        
-        private void button3_Click(object sender, EventArgs e)
-        {
-            DoSave();
 
-
-        }
         private void DoLoad(string NXTName)
         {
-            for (int i = 0; i < (int) DevKey.CreateSubKey(NXTName).GetValue("BTNName", -1); i++)
+            loading = true;
+             RegistryKey SaveRegistryKey = DevKey.CreateSubKey(NXTName);
+            //The four "classic" buttons
+            for (int i = 0; i < 3; i++)
             {
-                ABNames[i] = (string)DevKey.CreateSubKey(NXTName).GetValue("BTNName" + i);
+                actiontoggle[i]=((string)(SaveRegistryKey.GetValue("MainBTNToggle" + i,"false"))).ToUpper() == "TRUE";
+                ToggleSetup.Items[i].Checked = actiontoggle[i];
+            }
+
+
+            //new button array
+            for (int i = 0; i < (int) SaveRegistryKey.GetValue("BTNName", -1); i++)
+            {
+                ABNames[i] = (string)SaveRegistryKey.GetValue("BTNName" + i);
             }
             ;
 
-            for (int i = 0; i < (int) DevKey.CreateSubKey(NXTName).GetValue("BTNToggle", -1); i++)
+            for (int i = 0; i < (int) SaveRegistryKey.GetValue("BTNToggle", -1); i++)
             {
-                Buttons[i].toggle = ((string)(DevKey.CreateSubKey(NXTName).GetValue("BTNToggle" + i))).ToUpper() == "TRUE";
-                Buttons[i].down = ((string)(DevKey.CreateSubKey(NXTName).GetValue("BTNDown" + i))).ToUpper() == "TRUE";
+                Buttons[i].toggle = ((string)(SaveRegistryKey.GetValue("BTNToggle" + i))).ToUpper() == "TRUE";
+                Buttons[i].down = ((string)(SaveRegistryKey.GetValue("BTNDown" + i))).ToUpper() == "TRUE";
             }
             RedrawBTNAry();   
 
             // Loads the Port for NXTName from the Registry and sets the ComboboxPorts Name to Point to it
-            SavePort.Text = (string)DevKey.CreateSubKey(NXTName).GetValue("Port");
-            SaveName.Text = NXTName;
-            comboBoxComports.Text = SavePort.Text;
-            FileSelector.Text= (string)DevKey.CreateSubKey(NXTName).GetValue("ProgName");
-            //Doesen't work as expected
+            comboBoxComports.Text = (string)SaveRegistryKey.GetValue("Port","COM1");
+            ProfileCombobox.Text = NXTName;
+  
+            SaveText.Text = NXTName;
+           ReleaseBehavior.SelectedIndex = (int)SaveRegistryKey.GetValue("ReleaseBehavior",0);
+           
+            FileSelector.Text= (string)SaveRegistryKey.GetValue("ProgName","");
+    
             //Save the last used NXT
             SettingsKey.SetValue("LastNXT", NXTName);
 
-       
+            loading = false;
             changed = false;
+            SaveRegistryKey.Close();
         }
         
-       void getinfo(string regname, MenuItem Item, TabPage page, RegistryKey TabKey)
-    {
-           bool showit= (int) TabKey.GetValue(regname, 1)==1;
-           Item.Checked = showit;
-           SwitchTabPage(page, showit);
-
-
-    }
-       void setinfo(string regname, MenuItem Item, RegistryKey TabKey)
-       {
-           bool showit = Item.Checked;
-           if (showit)
-               TabKey.SetValue(regname, 1);
-           else
-               TabKey.SetValue(regname, 0);
-
-
-       }
-        private void DoLoadPages()
-     
-        {
-            RegistryKey TabKey = SettingsKey.CreateSubKey("Pages");
-
-            getinfo("control",showcontrol,ControlPage,TabKey);
-            getinfo("settings", showsettings, SettingsPage, TabKey);
-            getinfo("NXTs", shownxts, NXTsPage, TabKey);
-            getinfo("files", showfiles, FilesPage, TabKey);
-            getinfo("buttons", showbuttons, AryBtnPage, TabKey);
-            getinfo("debug", showdebug, DebugPage, TabKey);
-            getinfo("sensors", showsensors,SensorPage, TabKey);
-
-
-        }
-        private void DoSavePages()
-        {
-            RegistryKey TabKey = SettingsKey.CreateSubKey("Pages");
-
-            setinfo("control", showcontrol, TabKey);
-            setinfo("settings", showsettings, TabKey);
-            setinfo("NXTs", shownxts,  TabKey);
-            setinfo("files", showfiles,  TabKey);
-            setinfo("buttons", showbuttons,  TabKey);
-            setinfo("debug", showdebug,  TabKey);
-            setinfo("sensors", showsensors, TabKey);
-
-
-
-        }
+       
         private void SaveList_SelectedIndexChanged(object sender, EventArgs e)
         {
-            AskSave();
-            DoLoad((string)SaveList.SelectedItem);
+           
         
         }
 
         private void button4_Click(object sender, EventArgs e)
         {
-            DevKey.DeleteSubKeyTree((string) SaveList.SelectedItem);
-            LoadDevices();
+          
         }
 
 
         private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
         {
-            
+            //ButtonArray
             if (ButtonArraySetup)
             {
                 Buttons[Convert.ToInt32(((PictureBox)sender).Tag)].toggle= ! (Buttons[Convert.ToInt32(((PictureBox)sender).Tag)].toggle);
                if  (Buttons[Convert.ToInt32(((PictureBox)sender).Tag)].toggle)
-                  ((PictureBox)sender).Image = imageList1.Images[1];
+                  ((PictureBox)sender).Image = ButtonImgList.Images[1];
               else 
-                  ((PictureBox)sender).Image = imageList1.Images[0];
+                  ((PictureBox)sender).Image = ButtonImgList.Images[0];
                changed = true;
 
             }
@@ -575,9 +537,9 @@ namespace NxtPad
                 else
                 Buttons[Convert.ToInt32(((PictureBox)sender).Tag)].down = true;
                 if (Buttons[Convert.ToInt32(((PictureBox)sender).Tag)].down)
-                    ((PictureBox)sender).Image = imageList1.Images[1];
+                    ((PictureBox)sender).Image = ButtonImgList.Images[1];
                 else
-                    ((PictureBox)sender).Image = imageList1.Images[0];
+                    ((PictureBox)sender).Image = ButtonImgList.Images[0];
                 
             }
 
@@ -586,11 +548,12 @@ namespace NxtPad
 
         private void pictureBox1_MouseUp(object sender, MouseEventArgs e)
         {
+            //ButtonArray
             if (!Buttons[Convert.ToInt32(((PictureBox)sender).Tag)].toggle)
             {
 
                 Buttons[Convert.ToInt32(((PictureBox)sender).Tag)].down = false;
-                ((PictureBox)sender).Image = imageList1.Images[0];
+                ((PictureBox)sender).Image = ButtonImgList.Images[0];
                 actionButtonPressed=true;
             }
         }
@@ -598,14 +561,15 @@ namespace NxtPad
 
         private void checkBox2_CheckStateChanged(object sender, EventArgs e)
         {
-            
+            ////ButtonArray
             ButtonArraySetup = ((CheckBox)sender).Checked;
             RedrawBTNAry();
 
         }
         void RedrawBTNAry()
         {
-            foreach (Control C in AryBtnPage.Controls)
+            //ButtonArray
+           /* foreach (Control C in AryBtnPage.Controls)
             {
                 if (C is PictureBox)
                     if (C.Name != "bgr")
@@ -622,7 +586,7 @@ namespace NxtPad
    if (C is TextBox)
        ((TextBox)C).Text=ABNames[Convert.ToInt32( ((TextBox)C).Tag)];
 
-            }
+            }*/
         }
 
 
@@ -632,16 +596,15 @@ namespace NxtPad
             {
                 this.WindowState =
                 FormWindowState.Maximized;
-                this.Menu = null;
-                MessageLabel.Visible = true;
+               // MessageLabel.Visible = true;
 
             }
             else
             {
                 this.WindowState =
                     FormWindowState.Normal;
-                this.Menu = mainMenu1;
-                MessageLabel.Visible = false;
+            
+              //  MessageLabel.Visible = false;
             }
         }
 
@@ -659,7 +622,7 @@ namespace NxtPad
 
         private void button3_Click_1(object sender, EventArgs e)
         {
-            GetBatteryLevel();
+            NXT.GetBatteryLevel();
 
         }
 
@@ -668,102 +631,44 @@ namespace NxtPad
         private delegate void InvokeStr(string text);
         private delegate void InvokeInt(int i);
 
-
-        private void serialPort1_DataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
+        private void OnMailBox(object sender, MailboxMessageEventArgs e)
         {
-            byte[] Data = new byte[serialPort1.ReadBufferSize];
-
-            serialPort1.Read(Data, 0, serialPort1.ReadBufferSize);
-
-            if ((Data[2] == 02) && (Data[3] == 0x0B))//GETBATTERYLEVEL Answer
-            {//80 23
-           //     textBox7.Invoke(new InvokeInt(NewBatteryData), Data[5] + Data[6]*256);
-            }
-            if ((Data[2] == 02) && (Data[3] == 0x86))//Find First
-            {
-                byte ErrorCode = Data[4];
-                byte Handle = Data[5];
-                string Filename;
-                Filename = "";
-                for (int j = 0; j < 19; j++)
-                {
-                    Filename = Filename + (char)Data[6 + j];
-                }
-                if (ErrorCode == 0)
-                {
-                    FileSelector.Invoke(new InvokeStr(AddFileToList), Filename);
-                    FindNext(Handle);
-                }
-                else
-                    DoLogText("error");
-                
-
-            }
-            if ((Data[2] == 02) && (Data[3] == 0x87))//Find Next
-            {
-                byte ErrorCode = Data[4];
-                byte Handle = Data[5];
-                string Filename;
-                Filename = "";
-                for (int j = 0; j < 18; j++)
-                {
-                    Filename = Filename + (char)Data[6 + j];
-                }
-
-                if (ErrorCode == 0)
-                {
-                    FindNext(Handle);
-                    FileSelector.Invoke(new InvokeStr(AddFileToList), Filename);
-                }
-                else
-                {
-                    DoLogText("error");
-                    enablesend = true;
-                }
-
-
-            }
-            if ((Data[2] == 02) && (Data[3] == 0x07))//GetInputValues
-            {
-                byte ErrorCode = Data[4];
-                byte Port = Data[5];
-                byte DataValid = Data[6];
-                byte DataCalib = Data[7];
-                byte SensorType = Data[8];
-                byte SensorMode = Data[9];
-
-                
-                UInt16 Raw = BitConverter.ToUInt16(Data, 10);
-
-                UInt16 NormData = BitConverter.ToUInt16(Data, 12);
-
-                Int16 ScaleData = BitConverter.ToInt16(Data, 14);
-                DebugTextBox.Invoke(new InvokeStr(logtext), ScaleData.ToString());
-    
+            //DisplayMessage(ParseMessage(Text));
+           
+        }
+        private void OnInputData(object sender, InputValuesEventArgs e)
+        {
+            DebugTextBox.Invoke(new InvokeStr(logtext), e.ScaleData.ToString());
+        }
+        private void OnFindFirst(object sender, StringEventArgs e)
+        {
+            FileSelector.Invoke(new InvokeStr(ClearFileListAndAdd), e.Text);
+        }
+        private void OnFindSth(object sender, StringEventArgs e)
+        {
+            FileSelector.Invoke(new InvokeStr(AddFileToList), e.Text);
+        }
+        private void OnBattery(object sender, IntegerEventArgs e)
+        {
+            //textBox7.Invoke(new InvokeInt(NewBatteryData), e.Value);
+        }
+        private void OnError(object sender, StringEventArgs e)
+        {
+            DoLogText(e.Text);
             
-            }
-            if ((Data[2] == 02) && (Data[3] == 0x13))//ReadMessage
-            {
-                byte Status = Data[4];
-                byte LocalMailBoxNr = Data[5];
-                byte Size = Data[6];
-               
-
-                string Text;
-                Text = "";
-                for (int j = 0; j < (Size-1); j++)
-                {
-                    Text = Text + (char)Data[7 + j];
-                }
-              
-                DisplayMessage(ParseMessage(Text));
-            }
-
-
-                
+        }
+        private void OnOutput(object sender, OutputValuesEventArgs e)
+        {
+            int v=Convert.ToInt32( e.RotatationCount);
+            if (e.Port == 0) V1 = v;
+            if (e.Port == 1) V2 = v;
+            if (e.Port == 2) V3 = v;
+            NXT.GetMotorValues(e.Port);
 
         }
 
+                    
+//Just for the NXT->PPC Messagingstuff (inactive atm to keep it simple)
 InMessage ParseMessage(string Text)
 {
     InMessage tmp=new InMessage();
@@ -815,32 +720,6 @@ void DisplayMessage(InMessage Message)
 
 
 
-void HideTabPage(TabPage page) 
-    {
-
-        if (TabController.TabPages.Contains(page))
-            TabController.TabPages.RemoveAt(
-                TabController.TabPages.IndexOf(page));
-            
-    }
-
-
-
-void ShowTabPage(TabPage page)
-    {
-
-if (! TabController.TabPages.Contains(page))
-TabController.TabPages.Add(page);
-    }
-void SwitchTabPage(TabPage page, bool mode)
-{
-    if (mode)
-        ShowTabPage(page);
-    else
-        HideTabPage(page);
-
-}
-
 
 
 void DoLogText(string Text)
@@ -856,15 +735,15 @@ void DoLogText(string Text)
 
     void DoSetMessage(string Text)
     {
-        if (MessageLabel.InvokeRequired)
-            MessageLabel.Invoke(new InvokeStr(setmessagelabel), Text);
-        else
-            setmessagelabel(Text);
+//        if (MessageLabel.InvokeRequired)
+            //MessageLabel.Invoke(new InvokeStr(setmessagelabel), Text);
+        //else
+            //setmessagelabel(Text);
     }
         private void setmessagelabel(string s)
     {
-        if (!(s == ""))
-            MessageLabel.Text = s;
+     //   if (!(s == ""))
+    //        MessageLabel.Text = s;
 
     }
     void SetText(string text)
@@ -880,134 +759,36 @@ void DoLogText(string Text)
 
     private void AddFileToList(string s)
     {
-        FileSelector.Items.Add((string) s);
+        ListViewItem I =new ListViewItem(s);
+        I.ImageIndex=0;
+        FileSelector.Items.Add(I);
+        
     }
-    void GetBatteryLevel()
+    private void ClearFileListAndAdd(string s)
     {
-        byte[] Command = { 0x00, 0x0B };
-        Send(Command);
+        FileSelector.Items.Clear();
+        FileSelector.Items.Add(new ListViewItem(s));
     }
 
 
-
-
-
-    void FindFirst(string Filter)
-    {
-        enablesend = false;
-        byte[] Command = new byte[21];
-
-        Command[0] = 0x01;
-        Command[1] = 0x86;
-
-        int j = 2;//6 //start writing the string to the byte array on the 7th byte
-        foreach (char ch in Filter.ToCharArray())
-        {
-
-            Command[j] = (byte)ch;
-            j++;
-        }
-        Send(Command);
-
-    }
-    void FindNext(byte OldHandle)
-        {
-
-
-            byte[] Command = new byte[3];
-
-            Command[0] = 0x01;
-            Command[1] = 0x87;
-            Command[2] = OldHandle;
-
-            Send(Command);
-
-        }
-
-
-        void SendBeep(UInt16 freq,UInt16 duration)
-        {
-
-
-            byte[] Command = new byte[6];
-
-            Command[0] = 0x80;
-            Command[1] = 0x03;
-            Command[2] = (byte)(freq & 0xff);
-            Command[3] = (byte)(freq >> 8);
-            Command[4] = (byte)(duration & 0xff);
-            Command[5] = (byte)(duration >> 8);
-            Send(Command);
-
-        }
-    void MessageRead(byte Remotebox, byte Localbox, bool remove)
-    {
-
-
-        byte[] Command = new byte[5];
-
-        Command[0] = 0x00;
-        Command[1] = 0x13;
-        Command[2] = Remotebox;
-        Command[3] = Localbox;
-        if (remove)
-            Command[4] = 0x01;
-        else
-            Command[4] = 0x00;
-
-
-        Send(Command);
-
-    }
-    void Run(string Filter)
-    {
-
-        byte[] Command = new byte[21];
-
-        Command[0] = 0x00;
-        Command[1] = 0x00;
-
-
-        int j = 2;//6 //start writing the string to the byte array on the 7th byte
-        foreach (char ch in Filter.ToCharArray())
-        {
-
-            Command[j] = (byte)ch;
-            j++;
-        }
-        Send(Command);
-
-    }
-    void Stop()
-    {
-
-        byte[] Command = new byte[2];
-
-        Command[0] = 0x00;
-        Command[1] = 0x01;
-
-
-        Send(Command);
-
-    }
 
 
         private void GetFileList_Click(object sender, EventArgs e)
         {
-            FindFirst("*.rxe");
+            
         }
 
 
         private void StartProgram_Click(object sender, EventArgs e)
         {
-            Run(FileSelector.Text);
-
+            
+            
         }
 
 
         private void StopProgramBtn_Click(object sender, EventArgs e)
         {
-            Stop();
+            
         }
         bool switchitem(MenuItem Item)
         {
@@ -1015,85 +796,21 @@ void DoLogText(string Text)
             return Item.Checked;
         }
 
-        private void menuItem8_Click(object sender, EventArgs e)
-        {
-            //control
-            SwitchTabPage(ControlPage, switchitem((MenuItem)sender));
-            DoSavePages();
-        }
-
-        private void menuItem6_Click(object sender, EventArgs e)
-        {
-            //settinga
-            SwitchTabPage(SettingsPage,switchitem((MenuItem)sender));
-            DoSavePages();
-        }
-
-
-
-
-        private void shownxts_Click(object sender, EventArgs e)
-        {
-            //NXTs
-            SwitchTabPage(NXTsPage,switchitem((MenuItem)sender));
-            DoSavePages();
-    
-        }
-
-
-
-        private void showfiles_Click(object sender, EventArgs e)
-        {
-            //Files
-            SwitchTabPage(FilesPage, switchitem((MenuItem)sender));
-            DoSavePages();
-        }
-
-        private void showdebug_Click(object sender, EventArgs e)
-        {
-            //Debug
-            SwitchTabPage(DebugPage, switchitem((MenuItem)sender));
-            DoSavePages();
-        }
-
-        private void showbuttons_Click(object sender, EventArgs e)
-        {
-            //buttons
-            SwitchTabPage(AryBtnPage, switchitem((MenuItem)sender));
-            DoSavePages();
-        }
-
-        private void Form1_Closing(object sender, CancelEventArgs e)
-        {
-          
-        }
-
+      
+     
+ 
         private void button3_Click_2(object sender, EventArgs e)
         {
-            byte[] Command = new byte[3];
-
-            Command[0] = 0x00;
-            Command[1] = 0x07;
-            Command[2] = Convert.ToByte(textBox7.Text);
-
-
-            Send(Command);
+            //NXT.GetSensorValues( Convert.ToByte(textBox7.Text));
 
         }
 
-        private void showSensors_Click(object sender, EventArgs e)
-        {
-            //buttons
-            SwitchTabPage(SensorPage, switchitem((MenuItem)sender));
-            DoSavePages();
-
-        }
-
+    
         private void menuItem7_Click(object sender, EventArgs e)
         {
 
             AskSave();
-            serialPort1.Close();
+            NXT.Close();
             Application.Exit();
          
         }
@@ -1105,55 +822,236 @@ void DoLogText(string Text)
 
         private void SavePort_TextChanged(object sender, EventArgs e)
         {
+            //Event fires even if text is changed trough the programm
             changed = true;
         }
 
         private void menuItem2_Click(object sender, EventArgs e)
         {
-            Stop();
+            NXT.Stop();
         }
-        void SendWelcomeBeep()
-        {
-            beeppos = 0;
-            timer1.Enabled = true;
-        }
-
-
-        private void timer1_Tick(object sender, EventArgs e)
-        {
-            byte time = 200;
-        if (beeppos==0)
-            SendBeep(780, time);//N
-        if (beeppos == 1)
-            SendBeep(880, time);//X
-        if (beeppos == 2)
-            SendBeep(840, time);//T
-        if (beeppos == 3)
-            SendBeep(800, time);//P
-        if (beeppos == 4)
-            SendBeep(970, time);//a
-        if (beeppos == 5)
-            SendBeep(1000, time);//d
-        if (beeppos >= 6)
-            timer1.Enabled = false;
-    
-
-            beeppos++;
-
-        }
+ 
 
         private void AnswerCheckbox_CheckStateChanged(object sender, EventArgs e)
         {
-            btQuery.Enabled=((CheckBox) sender).Checked;
+         //   btQuery.Enabled=((CheckBox) sender).Checked;
         }
 
         private void btQuery_Tick(object sender, EventArgs e)
         {
-            if (enablesend)
+            /*if (enablesend)
             {
-                MessageRead(0x01, 1, true);
+                NXT.MessageRead(0x01, 1, true);
+            }*/
+        }
+
+        private void button3_Click_3(object sender, EventArgs e)
+        {
+            NXT.Test();
+            
+            
+            
+            
+        }
+
+        private void pBAction2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void pBAction1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void pBBackground_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void pBAction3_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void pBAction4_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void FilesPage_GotFocus(object sender, EventArgs e)
+        {
+            
+        }
+
+        private void FileSelector_KeyDown(object sender, KeyEventArgs e)
+        {
+
+        }
+
+        private void listView1_ItemActivate(object sender, EventArgs e)
+        {
+
+            NXT.Run(FileSelector.FocusedItem.Text);
+
+            DrawNavBtn(1);
+            TabController.SelectedIndex = 0;
+            
+        }
+
+        private void FileSelector_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void pictureBox18_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void contextMenu1_Popup(object sender, EventArgs e)
+        {
+
+        }
+
+        private void SaveProf_Click(object sender, EventArgs e)
+        {
+            DoSave();
+        }
+
+        private void menuItem1_Click(object sender, EventArgs e)
+        {
+            string keyname = (string)ProfileCombobox.SelectedItem;
+            RegistryKey DK = Registry.CurrentUser.OpenSubKey("SOFTWARE\\NXTPad\\Devices",true);
+            DK.DeleteSubKey(keyname);
+            DK.Close();
+            LoadDevices();
+        }
+
+        private void ProfileCombobox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            //how to seperate between user and program?
+            if (!loading)
+            {
+                AskSave();
+                DoLoad((string)ProfileCombobox.SelectedItem);
             }
         }
+
+        private void panel1_GotFocus(object sender, EventArgs e)
+        {
+
+        }
+
+        private void NavImg1_Click(object sender, EventArgs e)
+        {
+            DrawNavBtn(1);
+            TabController.SelectedIndex = 0;
+        }
+
+        private void NavImg2_Click(object sender, EventArgs e)
+        {
+            DrawNavBtn(2);
+            TabController.SelectedIndex = 1;
+
+        }   
+        private void NavImg3_Click(object sender, EventArgs e)
+        {
+            DrawNavBtn(3);
+            NXT.FindFirst("*.rxe");
+            TabController.SelectedIndex = 2;
+        }
+
+        private void NavImg4_Click(object sender, EventArgs e)
+        {
+            NXT.Stop();
+        }
+
+        private void listView1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void listView1_ItemCheck(object sender, ItemCheckEventArgs e)
+        {
+            changed = true;
+            actiontoggle[e.Index] = !ToggleSetup.Items[e.Index].Checked;
+
+        }
+
+        private void TestBtn1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void ReleaseBehavior_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            changed = true;
+            send0whenreleased = ReleaseBehavior.SelectedIndex==0;
+        }
+
+        void DrawNeedle(int centerX, int centerY, int radius, double angle)
+        {
+            Graphics g = Dashboard.CreateGraphics();
+            Pen p = new Pen(Color.Red, 2);
+            int pointX = centerX + Convert.ToInt32(Math.Cos(2 * Math.PI / 360 * angle) * radius);
+            int pointY = centerY + Convert.ToInt32(Math.Sin(2 * Math.PI / 360 * angle) * radius);
+            g.DrawLine(p, centerX, centerY, pointX,pointY);
+            g.Dispose();
+        }
+        private void button3_Click(object sender, EventArgs e)
+        {
+            NXT.GetMotorValues(0);
+            timer1.Enabled = true;
+
+            
+        }
+        
+        void DrawSpeedDashboard(int v1, int v2, int v3)
+        {
+            Graphics g = Dashboard.CreateGraphics();
+            g.DrawImage(DashboardList.Images[0], 0, 0);
+            g.Dispose();
+            //DrawNeedle(32, 40, 25, angle);//angle=210-360
+            DrawNeedle(31, 35, 25, (double)(210+v1*1.5));
+            DrawNeedle(96, 35, 25, 210 + v2 * 1.5);
+            DrawNeedle(160, 35, 25, 210 + v3 * 1.5);
+            
+        }
+        
+
+
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+//            DrawSpeedDashboard(V1, V2, V3);
+            
+        DrawSpeedDashboard(angle, angle, angle);
+
+        angle = angle + 10;
+        if (angle > 100) angle = 0;
+      
+
+        }
+
+        private void pictureBox1_Click(object sender, EventArgs e)
+        {
+            DrawNavBtn(-1);
+            TabController.SelectedIndex = 3;
+        }
+
+        private void button4_Click_1(object sender, EventArgs e)
+        {
+            string s = NxtPad.Properties.Resources.HelpHTML;
+            helpbrowser.DocumentText = s;
+        }
+
+        private void helpbrowser_Navigating(object sender, WebBrowserNavigatingEventArgs e)
+        {
+           
+        }
+
+
 
  
 
